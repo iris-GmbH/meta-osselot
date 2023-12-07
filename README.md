@@ -22,7 +22,7 @@ To enable the Osselot integration, simply add `INHERIT += "osselot"` to your `lo
 
 Osselot can provide results in various formats, at the time of writing: json, yaml, xml and spdx. See https://wiki.osselot.org/index.php/REST) for the most up-to-date information.
 
-You can specify a format by setting the `OSSELOT_FORMAT` variable (defaults to `json`).
+You can specify one or more space-separated output formats by setting the `OSSELOT_FORMATS` variable (defaults to `json`).
 
 Additionally, you can customize the output directory for Osselot results by setting the `OSSELOT_DIR` variable (defaults to `${DEPLOY_DIR}/osselot`).
 

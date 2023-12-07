@@ -2,11 +2,10 @@
 # Copyright 2023 iris-GmbH infrared & intelligent sensors
 
 # see https://wiki.osselot.org/index.php/REST for available formats
-OSSELOT_FORMAT ??= "json"
+OSSELOT_FORMATS ??= "json"
 OSSELOT_DIR ??= "${DEPLOY_DIR}/osselot"
 
-OSSELOT_FORMAT_DIR = "${OSSELOT_DIR}/${OSSELOT_FORMAT}"
-OSSELOT_META_FILE = "${OSSELOT_FORMAT_DIR}/meta.json"
+OSSELOT_META_FILE = "${OSSELOT_DIR}/meta.json"
 OSSELOT_META_FILE_LOCK = "${OSSELOT_META_FILE}.lock"
 OSSELOT_REST_URI = "https://rest.osselot.org"
 
@@ -18,11 +17,16 @@ python () {
 python do_osselot_init() {
     from datetime import datetime
 
-    osselot_format = d.getVar("OSSELOT_FORMAT")
-    osselot_format_dir = d.getVar("OSSELOT_FORMAT_DIR")
+    osselot_dir = d.getVar("OSSELOT_DIR")
+    osselot_formats = d.getVar("OSSELOT_FORMATS").split()
     osselot_meta_file = d.getVar("OSSELOT_META_FILE")
-    bb.debug(2, f"Creating osselot directory for format {format}: {osselot_format_dir}")
-    bb.utils.mkdirhier(f"{osselot_format_dir}")
+
+    bb.debug(2, "Creating osselot directory")
+    bb.utils.mkdirhier(f"{osselot_dir}")
+
+    for osselot_format in osselot_formats:
+        bb.debug(2, f"Creating directory for format {osselot_format}")
+        bb.utils.mkdirhier(f"{osselot_dir}/{osselot_format}")
 
     bb.debug(2, "Creating empty meta file: {osselot_meta_file}")
     write_json(osselot_meta_file, {
@@ -35,14 +39,15 @@ python do_osselot_init() {
 
 addhandler do_osselot_init
 do_osselot_init[eventmask] = "bb.event.BuildStarted"
+do_osselot_init[cleandirs] = "${OSSELOT_DIR}"
 
 python do_osselot_collect() {
     import urllib
     import json
     import re
 
-    osselot_format = d.getVar("OSSELOT_FORMAT")
-    osselot_format_dir = d.getVar("OSSELOT_FORMAT_DIR")
+    osselot_dir = d.getVar("OSSELOT_DIR")
+    osselot_formats = d.getVar("OSSELOT_FORMATS").split()
     osselot_meta_file = d.getVar("OSSELOT_META_FILE")
     osselot_rest_uri = d.getVar("OSSELOT_REST_URI")
 
@@ -77,18 +82,18 @@ python do_osselot_collect() {
         write_json(osselot_meta_file, meta)
         return
 
-    uri = f"{osselot_rest_uri}/{osselot_format}/{package}/{version}"
-    output = f"{osselot_format_dir}/{package}-{version}.{osselot_format}"
-
     bb.debug(2, f"Searching osselot API for package {package} in version {version}")
     try:
-        urllib.request.urlretrieve(uri, output)
-        meta["packages_found"].append({
-            "name": package,
-            "version": version,
-            "format": output
-        })
-        write_json(osselot_meta_file, meta)
+        for osselot_format in osselot_formats:
+            uri = f"{osselot_rest_uri}/{osselot_format}/{package}/{version}"
+            output = f"{osselot_dir}/{osselot_format}/{package}-{version}.{osselot_format}"
+
+            urllib.request.urlretrieve(uri, output)
+            meta["packages_found"].append({
+                "name": package,
+                "version": version,
+            })
+            write_json(osselot_meta_file, meta)
     except urllib.error.HTTPError as e:
         if e.code == 404:
             reason = f"Package {package} in version {version} not found in the osselot database"
