@@ -71,7 +71,7 @@ python do_osselot_collect() {
         meta["packages_found"].append({
             "name": package,
             "version": version,
-            format: output
+            "format": output
         })
         write_json(osselot_meta_file, meta)
     except urllib.error.HTTPError as e:
