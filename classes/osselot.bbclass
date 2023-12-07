@@ -28,7 +28,8 @@ python do_osselot_init() {
     write_json(osselot_meta_file, {
         "timestamp": datetime.now().astimezone().isoformat(),
         "packages_found": [],
-        "packages_missed": []
+        "packages_missed": [],
+        "packages_ignored": []
     })
 }
 
@@ -50,9 +51,23 @@ python do_osselot_collect() {
     package = d.getVar("OSSELOT_NAME") or d.getVar("BPN")
     version = d.getVar("OSSELOT_VERSION") or d.getVar("PV")
 
+    # ignore package if OSSELOT_IGNORE is set to true within recipe
+    ignore = bool(d.getVar("OSSELOT_IGNORE"))
+    bb.debug(2, f"{package} has OSSELOT_IGNORE set to {ignore}.")
+    if ignore is True:
+        reason = f"OSSELOT_IGNORE set to {d.getVar('OSSELOT_IGNORE')}"
+        bb.debug(2, f"Ignoring {package}: {reason}")
+        meta["packages_ignored"].append({
+            "name": package,
+            "version": version,
+            "reason": reason
+        })
+        write_json(osselot_meta_file, meta)
+        return
+
     # if version not clearly identifiable (i.e. using a commit hash, autoinc, etc.) skip package
     if "+" in version:
-        reason = f"Package {package} contains not clearly identifiable version {version}. Skipping..."
+        reason = f"Package {package} contains not clearly identifiable version {version}"
         bb.warn(reason)
         meta["packages_missed"].append({
             "name": package,

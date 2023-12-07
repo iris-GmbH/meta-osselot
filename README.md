@@ -30,6 +30,10 @@ Additionally, you can customize the output directory for Osselot results by sett
 
 There might be false negatives when matching packages against the Osselot API due to mismatch in name or version formatting between the recipe and the Osselot database. In these cases you can set the variables `OSSELOT_NAME` and `OSSELOT_VERSION` within your recipe. If the mismatch occurs within an upstream recipe from the openembedded-core layer, please fix this by submitting a bbappend file to this repository.
 
+## Excluding packages from Osselot
+
+You can opt to exclude packages from Osselot by setting `OSSELOT_IGNORE = "1"` within a recipe.
+
 ##  Contributing
 
 Please submit any patches against the meta-osselot layer via a GitHub Pull Request.
