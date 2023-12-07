@@ -47,8 +47,8 @@ python do_osselot_collect() {
 
     meta = read_json(osselot_meta_file)
 
-    package = d.getVar("BPN")
-    version = d.getVar("PV")
+    package = d.getVar("OSSELOT_NAME") or d.getVar("BPN")
+    version = d.getVar("OSSELOT_VERSION") or d.getVar("PV")
 
     # if version not clearly identifiable (i.e. using a commit hash, autoinc, etc.) skip package
     if "+" in version:
