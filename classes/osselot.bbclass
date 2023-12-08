@@ -101,15 +101,32 @@ python do_osselot_collect() {
             write_json(osselot_meta_file, meta)
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            reason = f"Package {osselot_package} in version {version} not found in the osselot database"
-            bb.warn(reason)
-            meta["packages"].update({
-                f"{pn}/{version}": {
-                    "status": "not_found",
-                    "reason": reason
-                }
-            })
-            write_json(osselot_meta_file, meta)
+            bb.warn(f"No exact match for package {osselot_package} in version {version} in the osselot database. Looking for other versions...")
+            try:
+                uri = f"{osselot_rest_uri}/json/{osselot_package}"
+                output = f"{osselot_dir}/{pn}/{pn}-version-mismatch.json"
+                urllib.request.urlretrieve(uri, output)
+                meta["packages"].update({
+                    f"{pn}/{version}": {
+                        "status": "version_mismatch",
+                        "json": output
+                    }
+                })
+                write_json(osselot_meta_file, meta)
+            except urllib.error.HTTPError as ev:
+                if ev.code == 404:
+                    reason = f"No version of package {osselot_package} found in the osselot database"
+                    bb.warn(f"{reason}.")
+                    write_json(osselot_meta_file, meta)
+                    meta["packages"].update({
+                        f"{pn}/{version}": {
+                            "status": "not_found",
+                            "reason": reason
+                        }
+                    })
+                    write_json(osselot_meta_file, meta)
+                else:
+                    bb.error(f"Failed request to {uri}. [HTTP Error] {e.code}; Reason: {e.reason}")
         else:
             bb.error(f"Failed request to {uri}. [HTTP Error] {e.code}; Reason: {e.reason}")
 }
