@@ -34,21 +34,37 @@ python do_osselot_collect() {
     osselot_formats = d.getVar("OSSELOT_FORMATS").split()
     osselot_rest_uri = d.getVar("OSSELOT_REST_URI")
     osselot_meta_file = d.getVar("OSSELOT_META_FILE")
+    osselot_ignore = d.getVar("OSSELOT_IGNORE")
+    pn = d.getVar("PN")
     bpn = d.getVar("BPN")
+    pv = d.getVar("PV")
 
     osselot_package = d.getVar("OSSELOT_NAME") or bpn
-    version = d.getVar("OSSELOT_VERSION") or d.getVar("PV")
+    version = d.getVar("OSSELOT_VERSION") or pv
 
     meta = read_json(osselot_meta_file)
 
+    # ignore non-target packages
+    for suffix in d.getVar("SPECIAL_PKGSUFFIX").split():
+        if suffix in pn.removeprefix(bpn):
+            reason = f"Package name contains non-target suffix: {suffix}"
+            bb.debug(2, f"Ignoring {pn}: {reason}")
+            meta["packages"].update({
+                f"{pn}/{version}": {
+                    "status": "ignored",
+                    "reason": reason
+                }
+            })
+            write_json(osselot_meta_file, meta)
+            return
+
     # ignore package if OSSELOT_IGNORE is set to true within recipe
-    ignore = bool(d.getVar("OSSELOT_IGNORE"))
-    bb.debug(2, f"{bpn} has OSSELOT_IGNORE set to {ignore}.")
-    if ignore is True:
-        reason = f"OSSELOT_IGNORE set to {d.getVar('OSSELOT_IGNORE')}"
-        bb.debug(2, f"Ignoring {bpn}: {reason}")
+    bb.debug(2, f"{pn} has OSSELOT_IGNORE set to {osselot_ignore}.")
+    if bool(osselot_ignore) is True:
+        reason = f"OSSELOT_IGNORE set to {osselot_ignore}"
+        bb.debug(2, f"Ignoring {pn}: {reason}")
         meta["packages"].update({
-            f"{bpn}/{version}": {
+            f"{pn}/{version}": {
                 "status": "ignored",
                 "reason": reason
             }
@@ -58,10 +74,10 @@ python do_osselot_collect() {
 
     # if version not clearly identifiable (i.e. using a commit hash, autoinc, etc.) skip package
     if "+" in version:
-        reason = f"{bpn} contains not clearly identifiable version {version}"
+        reason = f"{pn} contains not clearly identifiable version {version}"
         bb.warn(reason)
         meta["packages"].update({
-            f"{bpn}/{version}": {
+            f"{pn}/{version}": {
                 "status": "not_found",
                 "reason": reason
             }
@@ -73,22 +89,22 @@ python do_osselot_collect() {
     try:
         for osselot_format in osselot_formats:
             uri = f"{osselot_rest_uri}/{osselot_format}/{osselot_package}/{version}"
-            output = f"{osselot_dir}/{bpn}/{bpn}-{version}.{osselot_format}"
+            output = f"{osselot_dir}/{pn}/{pn}-{version}.{osselot_format}"
             urllib.request.urlretrieve(uri, output)
-            if f"{bpn}/{version}" not in meta["packages"]:
+            if f"{pn}/{version}" not in meta["packages"]:
                 meta["packages"].update({
-                    f"{bpn}/{version}": {
+                    f"{pn}/{version}": {
                         "status": "found"
                     }
                 })
-            meta["packages"][f"{bpn}/{version}"][osselot_format] = output
+            meta["packages"][f"{pn}/{version}"][osselot_format] = output
             write_json(osselot_meta_file, meta)
     except urllib.error.HTTPError as e:
         if e.code == 404:
             reason = f"Package {osselot_package} in version {version} not found in the osselot database"
             bb.warn(reason)
             meta["packages"].update({
-                f"{bpn}/{version}": {
+                f"{pn}/{version}": {
                     "status": "not_found",
                     "reason": reason
                 }
@@ -101,7 +117,7 @@ addtask osselot_collect
 do_osselot_collect[nostamp] = "1"
 do_osselot_collect[network] = "1"
 do_osselot_collect[dirs] = "${OSSELOT_DIR}"
-do_osselot_collect[cleandirs] = "${OSSELOT_DIR}/${BPN}"
+do_osselot_collect[cleandirs] = "${OSSELOT_DIR}/${PN}"
 do_osselot_collect[lockfiles] = "${OSSELOT_META_FILE_LOCK}"
 do_rootfs[recrdeptask] += "do_osselot_collect"
 
