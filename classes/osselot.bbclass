@@ -34,7 +34,6 @@ python do_osselot_collect() {
 
     osselot_deploy_dir = d.getVar("OSSELOT_DEPLOY_DIR")
     osselot_data_dir_s = d.getVar("OSSELOT_DATA_DIR_S")
-    osselot_formats = d.getVar("OSSELOT_FORMATS").split()
     osselot_meta_file = d.getVar("OSSELOT_META_FILE")
     osselot_ignore = d.getVar("OSSELOT_IGNORE")
     pn = d.getVar("PN")
