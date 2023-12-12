@@ -91,6 +91,7 @@ python do_osselot_collect() {
             }
         })
     else:
+        bb.warn(f"No exact version match on {osselot_name}/{osselot_version} found. Attempting to find other versions.")
         if os.path.isdir(osselot_package_data_path):
             mismatch_dir = os.path.abspath(f"{osselot_package_deploy_dir}/version_mismatch")
             shutil.copytree(osselot_package_data_path, mismatch_dir)
