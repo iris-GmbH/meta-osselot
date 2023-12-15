@@ -76,7 +76,7 @@ python do_osselot_collect() {
     # try to find exact version of package
     osselot_package_data_path = os.path.abspath(f"{osselot_data_dir_s}/analysed-packages/{osselot_name}")
     osselot_versioned_package_data_path = os.path.abspath(f"{osselot_package_data_path}/version-{osselot_version}")
-    osselot_package_deploy_dir = os.path.abspath(f"{osselot_deploy_dir}/{pn}")
+    osselot_package_deploy_dir = os.path.abspath(f"{osselot_deploy_dir}/{bpn}")
     osselot_versioned_package_deploy_dir = os.path.abspath(f"{osselot_package_deploy_dir}/{osselot_version}")
 
     bb.debug(2, f"Attempting to find exact version match on {osselot_name}/{osselot_version} at {osselot_versioned_package_data_path}.")
@@ -112,7 +112,7 @@ python do_osselot_collect() {
 addtask osselot_collect
 do_osselot_collect[nostamp] = "1"
 do_osselot_collect[dirs] = "${OSSELOT_DEPLOY_DIR}"
-do_osselot_collect[cleandirs] = "${OSSELOT_DEPLOY_DIR}/${PN}"
+do_osselot_collect[cleandirs] = "${OSSELOT_DEPLOY_DIR}/${BPN}"
 do_osselot_collect[lockfiles] = "${OSSELOT_META_FILE_LOCK}"
 do_osselot_collect[depends] = "osselot-package-analysis-native:do_patch"
 do_rootfs[recrdeptask] += "do_osselot_collect"
