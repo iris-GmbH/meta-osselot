@@ -60,5 +60,5 @@ Please submit any patches against the meta-osselot layer via a GitHub Pull Reque
 
 ## (Current) Limitations
 
-1. meta-osselot does not account for patches made to packages within the Bitbake recipes, as the data provided by Osselot is (obviously) limited to the original source code. Thus, patches need to be cleared separately. You can use the [archiver class](https://docs.yoctoproject.org/singleindex.html#ref-classes-archiver) with the [archiver mode](https://docs.yoctoproject.org/singleindex.html#term-ARCHIVER_MODE) set to `original` for extracting all patch files.
-2. Osselot relies on accurate package names and versions, rather than using hashes for identifying components. This bears the (incredibly slim) risk of misidentifying another identical named and versioned package.
+1. meta-osselot does not account for patches made to packages within the Bitbake recipes, as the data provided by Osselot is (obviously) limited to the original source code. Thus, patches need to be cleared separately. Currently, we only extract the patch files and provide them next to the osselot clearing data.
+2. meta-osselot currently relies on accurate package names and versions, rather than using hashes for identifying components. This bears the (incredibly slim) risk of misidentifying another identical named and versioned package. In the future, we might consider file checksum validation for improving confidence in the collected data.
