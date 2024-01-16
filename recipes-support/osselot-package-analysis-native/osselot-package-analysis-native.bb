@@ -20,8 +20,9 @@ PV = "${OSSELOT_PV}"
 LICENSE = "CC0-1.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=0fba65e23f03aef2e3401a972aeef9dd"
 
-WORKDIR = "${OSSELOT_DATA_DIR}"
-S = "${OSSELOT_DATA_DIR_S}"
+WORKDIR = "${OSSELOT_DATA_WORKDIR}"
+# Download existing package analysis data into the data topdir
+S = "${OSSELOT_DATA_S_DIR}"
 
 python () {
     if not bb.data.inherits_class("osselot", d):
