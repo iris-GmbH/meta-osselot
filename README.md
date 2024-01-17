@@ -29,7 +29,7 @@ Meta-osselot integrates directly in the bitbake build process. It will identify 
 
 The results of this comparison, together with other meta-information as well as the available Osselot curation data, will be then provided as build artefacts.
 
-## Adding the meta-osselot layer(s) to your build
+## Adding the meta-osselot layer to your build
 
 Run `bitbake-layers add-layer meta-osselot` to add the core layer to your build.
 
@@ -45,9 +45,9 @@ repos:
 
 ## Enabling and configuring Osselot integration
 
-To enable the Osselot integration, simply add `INHERIT += "osselot"` to your `local.conf` file.
+To enable the Osselot integration, simply add `INHERIT += "osselot"` to your `local.conf` file. Now osselot tasks will automatically run for every package or image you build. 
 
-Additionally, meta-osselot can be configured via bitbake environment variables, either on a global or per recipe basis (or both).
+Meta-osselot can be configured via bitbake environment variables, either on a global or per recipe basis (or both).
 
 Available configuration options are as follows.
 
