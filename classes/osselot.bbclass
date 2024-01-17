@@ -226,11 +226,16 @@ python do_deploy_osselot_setscene() {
 }
 
 addtask osselot_populate_workdir
-do_osselot_populate_workdir[depends] = "osselot-package-analysis-native:do_patch"
+do_osselot_populate_workdir[depends] = " \
+    osselot-package-analysis-native:do_patch \
+"
 addtask osselot_create_spdx_checksums after do_osselot_populate_workdir
 addtask osselot_create_s_checksums after do_patch
 addtask osselot_compare_checksums after do_patch
-do_osselot_compare_checksums[depends] += "${PN}:do_osselot_create_s_checksums ${PN}:do_osselot_create_spdx_checksums"
+do_osselot_compare_checksums[depends] += " \
+    ${PN}:do_osselot_create_s_checksums \
+    ${PN}:do_osselot_create_spdx_checksums \
+"
 do_deploy_osselot[depends] = "${PN}:do_osselot_compare_checksums"
 do_deploy_osselot[dirs] = "${OSSELOT_WORKDIR}"
 do_deploy_osselot[sstate-inputdirs] = "${OSSELOT_WORKDIR}"
@@ -304,7 +309,7 @@ def write_checksum_file(checksum_file, checksum):
 
 def find_best_version_match(osselot_version, d):
     import os
-    from distutils.version import LooseVersion
+    import subprocess
 
     osselot_package_data_dir = d.getVar("OSSELOT_PACKAGE_DATA_DIR")
     osselot_data_version_prefix = d.getVar("OSSELOT_DATA_VERSION_PREFIX")
@@ -335,15 +340,21 @@ def find_best_version_match(osselot_version, d):
         return osselot_version, osselot_data_versions[osselot_version]
 
     # otherwise, attempt to identify the closest version match
+    bb.debug(2, f"Version {osselot_version} not available in osselot database. Finding the next best version match")
     osselot_data_version_strings = list(osselot_data_versions)
     osselot_data_version_strings.append(osselot_version)
-    osselot_data_version_strings.sort(key=LooseVersion)
-    osselot_version_index = osselot_data_version_strings.index(osselot_version)
+    process = subprocess.Popen("sort -V".split(" "), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE, shell=True)
+    so, se = process.communicate("\n".join(osselot_data_version_strings).encode())
+    osselot_data_version_strings_sorted = so.decode().strip("\n").split("\n")
 
+    if len(osselot_data_version_strings_sorted) != len(osselot_data_version_strings):
+        bb.fatal(f"Sorted osselot version list content does not match original list")
+    
+    osselot_version_index = osselot_data_version_strings_sorted.index(osselot_version)
     if osselot_version_index == 0:
-        best_match_version = osselot_data_version_strings[osselot_version_index+1]
+        best_match_version = osselot_data_version_strings_sorted[osselot_version_index+1]
     else:
-        best_match_version = osselot_data_version_strings[osselot_version_index-1]
+        best_match_version = osselot_data_version_strings_sorted[osselot_version_index-1]
     warn = f"Version {osselot_version} not available in osselot database. Using version {best_match_version}"
     bb.warn(warn)
     write_json(osselot_package_meta_file, 
