@@ -15,28 +15,26 @@ OSSELOT_PV ?= "1.0+git${SRCPV}"
 OSSELOT_IGNORE ?= "0"
 OSSELOT_IGNORE_LICENSES = "CLOSED"
 OSSELOT_IGNORE_SOURCE_GLOBS = ".pc/**/* patches/series .git/**/*"
-OSSELOT_DATA_VERSION_PREFIX ?= "version-"
-OSSELOT_PACKAGE_DATA_DIR ?= "${OSSELOT_DATA_TOPDIR}/${OSSELOT_NAME}"
 OSSELOT_DATA_WORKDIR = "${TMPDIR}/osselot-data"
 OSSELOT_DATA_S_DIR = "${OSSELOT_DATA_WORKDIR}/git"
-OSSELOT_DATA_TOPDIR = "${OSSELOT_DATA_S_DIR}/analysed-packages"
 OSSELOT_S_CHECKSUMS_DIR = "${WORKDIR}/osselot-checksums/s"
 OSSELOT_SPDX_CHECKSUMS_DIR = "${WORKDIR}/osselot-checksums/spdx"
 OSSELOT_WORKDIR = "${WORKDIR}/osselot"
 OSSELOT_PACKAGE_META_FILE = "${OSSELOT_WORKDIR}/${PN}-${PV}-meta.json"
+OSSELOT_PACKAGE_JSON = "${OSSELOT_DATA_WORKDIR}/packages.json"
 
 python do_osselot_populate_workdir() {
     import os
     import shutil
     import gzip
     from pathlib import Path
+    from difflib import get_close_matches
 
     osselot_name = d.getVar("OSSELOT_NAME")
     osselot_version = d.getVar("OSSELOT_VERSION")
-    osselot_package_data_dir = d.getVar("OSSELOT_PACKAGE_DATA_DIR")
     osselot_workdir = d.getVar("OSSELOT_WORKDIR")
-    osselot_data_version_prefix = d.getVar("OSSELOT_DATA_VERSION_PREFIX")
     osselot_package_meta_file = d.getVar("OSSELOT_PACKAGE_META_FILE")
+    osselot_package_json = d.getVar("OSSELOT_PACKAGE_JSON")
 
     ignored, reason = osselot_ignore_package(d)
     if ignored:
@@ -49,32 +47,58 @@ python do_osselot_populate_workdir() {
         )
         return
 
-    bb.debug(2, f"Attempting to find osselot package data on {osselot_name} at {osselot_package_data_dir}")
-    if not os.path.isdir(osselot_package_data_dir):
-        bb.warn(f"Package {osselot_name} not found in osselot database")
+    available_osselot_packages = read_json(osselot_package_json)
+
+    bb.debug(2, f"Attempting to find osselot package data in available osselot packages")
+    if not osselot_name in available_osselot_packages:
+        warn = f"Package {osselot_name} not found in osselot database. Skipping."
+        similar_package_names = get_close_matches(osselot_name, available_osselot_packages)
+        if similar_package_names:
+            similar_package_names_string = " ".join(similar_package_names)
+            warn = f"{warn} Close matches: {similar_package_names_string}"
+        bb.warn(warn)
         write_json(osselot_package_meta_file, 
             {
                 "package_status": "not_found",
-                "reason": f"No osselot data for {osselot_name} available at {osselot_package_data_dir}"
+                "reason": warn
             }
         )
         return
 
-    best_match_version, versioned_package_data_dir = find_best_version_match(osselot_version, d)
-    versioned_package_data_workdir = os.path.join(osselot_workdir, os.path.relpath(versioned_package_data_dir, osselot_package_data_dir))
+    best_version_match = find_best_version_match(osselot_version, available_osselot_packages[osselot_name]["versions"])
+    if best_version_match == osselot_version:
+        reason = f"{osselot_name}/{osselot_version} available in osselot database"
+        bb.debug(2, reason)
+        write_json(osselot_package_meta_file, 
+            {
+                "package_status": "found",
+                "reason": reason
+            }
+        )
+    else:
+        warn = f"{osselot_name}/{osselot_version} not available in osselot database. Using version {osselot_name}/{best_version_match}"
+        bb.warn(warn)
+        write_json(osselot_package_meta_file, 
+            {
+                "package_status": "version_mismatch",
+                "reason": warn
+            }
+        )
 
-    bb.debug(2, f"Copying versioned package data from {versioned_package_data_dir} to osselot workdir at {versioned_package_data_workdir}")
-    shutil.copytree(versioned_package_data_dir, os.path.join(osselot_workdir, versioned_package_data_workdir))
+    versioned_package_data_srcdir = available_osselot_packages[osselot_name]["versions"][best_version_match]
+    versioned_package_data_destdir = os.path.join(osselot_workdir, Path(versioned_package_data_srcdir).name)
+    bb.debug(2, f"Copying versioned package data from {versioned_package_data_srcdir} to osselot workdir at {versioned_package_data_destdir}")
+    shutil.copytree(versioned_package_data_srcdir, versioned_package_data_destdir)
 
     # find and extract archived osselot files
     # TODO: use a universal extractor tool such as https://www.nongnu.org/atool/ or https://tracker.debian.org/pkg/unp
-    for gz in Path(osselot_workdir).rglob("*.gz"):
+    for gz in Path(versioned_package_data_destdir).rglob("*.gz"):
         bb.debug(2, f"Extracting archive {gz.as_posix()}")
         with gzip.open(gz) as f_in:
             with open(os.path.join(gz.parent, gz.stem), 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
         os.remove(gz)
-    for tgz in Path(osselot_workdir).rglob("*.tgz"):
+    for tgz in Path(versioned_package_data_destdir).rglob("*.tgz"):
         shutil.unpack_archive(tgz, tgz.parent)
         os.remove(tgz)
 }
@@ -225,9 +249,9 @@ python do_deploy_osselot_setscene() {
     sstate_setscene(d)
 }
 
-addtask osselot_populate_workdir
+addtask osselot_populate_workdir after do_patch
 do_osselot_populate_workdir[depends] = " \
-    osselot-package-analysis-native:do_patch \
+    osselot-package-analysis-native:do_osselot_collect_packages \
 "
 addtask osselot_create_spdx_checksums after do_osselot_populate_workdir
 addtask osselot_create_s_checksums after do_patch
@@ -238,6 +262,7 @@ do_osselot_compare_checksums[depends] += " \
 "
 do_deploy_osselot[depends] = "${PN}:do_osselot_compare_checksums"
 do_deploy_osselot[dirs] = "${OSSELOT_WORKDIR}"
+do_deploy_osselot[cleandirs] = "${OSSELOT_DEPLOYDIR}/${PN}"
 do_deploy_osselot[sstate-inputdirs] = "${OSSELOT_WORKDIR}"
 do_deploy_osselot[sstate-outputdirs] = "${OSSELOT_DEPLOYDIR}/${PN}"
 addtask do_deploy_osselot_setscene
@@ -307,41 +332,17 @@ def write_checksum_file(checksum_file, checksum):
             bb.debug(2, f"Checksum written to {checksum_file}.")
 
 
-def find_best_version_match(osselot_version, d):
+def find_best_version_match(osselot_version, available_osselot_versions):
     import os
     import subprocess
 
-    osselot_package_data_dir = d.getVar("OSSELOT_PACKAGE_DATA_DIR")
-    osselot_data_version_prefix = d.getVar("OSSELOT_DATA_VERSION_PREFIX")
-    osselot_package_meta_file = d.getVar("OSSELOT_PACKAGE_META_FILE")
-
-    # generate a list of osselot package version directories
-    osselot_data_version_dirs = [
-        osselot_data_version_dir 
-        for osselot_data_version_dir in os.scandir(osselot_package_data_dir)
-        if osselot_data_version_dir.is_dir() and osselot_data_version_dir.name.startswith(osselot_data_version_prefix)
-    ]
-
-    # extract version string from directory names
-    osselot_data_versions = {
-        osselot_data_version_dir.name.removeprefix(osselot_data_version_prefix): osselot_data_version_dir
-        for osselot_data_version_dir in osselot_data_version_dirs
-    }
-
     # attempt to find a exact match
-    if osselot_version in osselot_data_versions:
-        bb.debug(2, f"Found exact version match for version {osselot_version}")
-        write_json(osselot_package_meta_file, 
-            {
-                "package_status": "found",
-                "reason": f"Package version {osselot_version} available in osselot database"
-            }
-        )
-        return osselot_version, osselot_data_versions[osselot_version]
+    if osselot_version in available_osselot_versions:
+        return osselot_version
 
-    # otherwise, attempt to identify the closest version match
+    # otherwise, identify the closest version match
     bb.debug(2, f"Version {osselot_version} not available in osselot database. Finding the next best version match")
-    osselot_data_version_strings = list(osselot_data_versions)
+    osselot_data_version_strings = list(available_osselot_versions)
     osselot_data_version_strings.append(osselot_version)
     process = subprocess.Popen("sort -V".split(" "), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE, shell=True)
     so, se = process.communicate("\n".join(osselot_data_version_strings).encode())
@@ -352,18 +353,10 @@ def find_best_version_match(osselot_version, d):
     
     osselot_version_index = osselot_data_version_strings_sorted.index(osselot_version)
     if osselot_version_index == 0:
-        best_match_version = osselot_data_version_strings_sorted[osselot_version_index+1]
+        best_version_match = osselot_data_version_strings_sorted[osselot_version_index+1]
     else:
-        best_match_version = osselot_data_version_strings_sorted[osselot_version_index-1]
-    warn = f"Version {osselot_version} not available in osselot database. Using version {best_match_version}"
-    bb.warn(warn)
-    write_json(osselot_package_meta_file, 
-        {
-            "package_status": "version_mismatch",
-            "reason": warn
-        }
-    )
-    return best_match_version, osselot_data_versions[best_match_version]
+        best_version_match = osselot_data_version_strings_sorted[osselot_version_index-1]
+    return best_version_match
 
 
 def match_spdx_file_to_source_file(spdx_checksum_file_path, s):
