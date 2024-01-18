@@ -47,6 +47,12 @@ repos:
 
 To enable the Osselot integration, simply add `INHERIT += "osselot"` to your `local.conf` file. Now osselot tasks will automatically run for every package or image you build. 
 
+Alternatively, if you are only interested in the osselot output and not in building packages add `--runonly=populate_osselot` to your bitbake command, e.g:
+
+```bash
+bitbake core-image-minimal --runonly=populate_osselot
+```
+
 Meta-osselot can be configured via bitbake environment variables, either on a global or per recipe basis (or both).
 
 Available configuration options are as follows.
