@@ -206,8 +206,8 @@ python do_osselot_compare_checksums() {
     s_checksum_files = Path(osselot_s_checksums_dir).rglob(f"*.{osselot_hash_algorithm}")
     meta["spdx_checksum_data_missing"] = []
     meta["spdx_checksum_data_mismatch"] = []
-    meta["spdx_checksum_data_match"] = []
     meta["ignored_files"] = []
+    meta["spdx_checksum_data_match"] = []
     for s_checksum_file in s_checksum_files:
         bb.debug(2, f"Processing checksum file {s_checksum_file}")
 
