@@ -241,11 +241,11 @@ python do_osselot_compare_checksums() {
     write_json(osselot_package_meta_file, meta)
 }
 
-SSTATETASKS += "do_deploy_osselot"
-do_deploy_osselot() {
+SSTATETASKS += "do_populate_osselot"
+do_populate_osselot() {
     bbnote "Deploying osselot files from ${OSSELOT_WORKDIR} to ${OSSELOT_DEPLOYDIR}"
 }
-python do_deploy_osselot_setscene() {
+python do_populate_osselot_setscene() {
     sstate_setscene(d)
 }
 
@@ -260,15 +260,15 @@ do_osselot_compare_checksums[depends] += " \
     ${PN}:do_osselot_create_s_checksums \
     ${PN}:do_osselot_create_spdx_checksums \
 "
-do_deploy_osselot[depends] = "${PN}:do_osselot_compare_checksums"
-do_deploy_osselot[dirs] = "${OSSELOT_WORKDIR}"
-do_deploy_osselot[cleandirs] = "${OSSELOT_DEPLOYDIR}/${PN}"
-do_deploy_osselot[sstate-inputdirs] = "${OSSELOT_WORKDIR}"
-do_deploy_osselot[sstate-outputdirs] = "${OSSELOT_DEPLOYDIR}/${PN}"
-addtask do_deploy_osselot_setscene
-addtask do_deploy_osselot
-do_build[recrdeptask] += "do_deploy_osselot"
-do_rootfs[recrdeptask] += "do_deploy_osselot"
+do_populate_osselot[depends] = "${PN}:do_osselot_compare_checksums"
+do_populate_osselot[dirs] = "${OSSELOT_WORKDIR}"
+do_populate_osselot[cleandirs] = "${OSSELOT_DEPLOYDIR}/${PN}"
+do_populate_osselot[sstate-inputdirs] = "${OSSELOT_WORKDIR}"
+do_populate_osselot[sstate-outputdirs] = "${OSSELOT_DEPLOYDIR}/${PN}"
+addtask do_populate_osselot_setscene
+addtask do_populate_osselot
+do_build[recrdeptask] += "do_populate_osselot"
+do_rootfs[recrdeptask] += "do_populate_osselot"
 
 
 def read_json(path):
