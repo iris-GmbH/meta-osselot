@@ -77,6 +77,13 @@ Available configuration options are as follows.
 
 We recommend overwriting `OSSELOT_SRC_URI` with your own fork of the `package-analysis` repository, as this allows you to push and re-use your own curated data. However, remember to keep your fork up-to-date with upstream repository for the latest curation data.
 
+When adding curation data to the git repository, be aware that following assumptions are made by meta-osselot, otherwise your curation data will **not** be identified:
+
+1. Available packages are subdirectories within the `analysed-packages` directory (depth is irrelevant). The package name equals the directory name.
+2. Available packages have one or more versions available as direct subdirectory within the package directory.
+3. These version directories start with the prefix "version-". The package version equals anything after this prefix.
+4. The version directory contains at least one valid SPDX file in JSON format.
+
 We also recommend to [upstream your curation data to the Osselot project](https://wiki.osselot.org/index.php/Main_Page#Contributing_to_the_OSSelot_project) for an additional layer of quality control, and for the open-source spirit of improving the Osselot database by making your curation data available to others.
 
 ### Overriding package names and versions for Osselot
