@@ -71,7 +71,6 @@ Available configuration options are as follows.
 | `OSSELOT_VERSION` | The version of this package within the Osselot database | `"${PV}"` |
 | `OSSELOT_IGNORE` | Set to `"1"` to ignore this recipe | `"0"`
 | `OSSELOT_IGNORE_SOURCE_GLOBS` | Within this recipe, ignore source code files in `S` where the paths match these globs (whitespace seperated) | `".pc/**/* patches/series .git/**/*"` |
-| `OSSELOT_DATA_VERSION_PREFIX` | The prefix of the version folder for this package within the Osselot database | `"version-"` |
 
 ## Using meta-osselot
 ### General recommendations
