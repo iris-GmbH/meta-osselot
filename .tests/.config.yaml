@@ -1,0 +1,13 @@
+header:
+  version: 14
+machine: qemux86-64
+distro: poky
+local_conf_header:
+  hashserve: |
+    BB_HASHSERVE = "auto"
+    BB_SIGNATURE_HANDLER = "OEEquivHash"
+    BB_HASHSERVE_UPSTREAM = "hashserv.yocto.io:8687"
+  sstate-mirror: |
+    SSTATE_MIRRORS ?= "file://.* http://cdn.jsdelivr.net/yocto/sstate/all/PATH;downloadfilename=PATH"
+  osselot: |
+    INHERIT += "osselot"
