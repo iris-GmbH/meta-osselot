@@ -3,7 +3,7 @@ MAKEFILE_DIR := $(dir ${MAKEFILE_PATH})
 export KAS_CONTAINER_TAG ?= 4.2
 export KAS_CONTAINER_IMAGE ?= ghcr.io/siemens/kas/kas:${KAS_CONTAINER_TAG}
 export KAS_BASE_CONFIG_FILE ?= .config.yaml
-export KAS_COMMAND ?= KAS_CONTAINER_IMAGE=${KAS_CONTAINER_IMAGE} ${MAKEFILE_DIR}kas-container shell -c "bitbake core-image-minimal --runonly=populate_osselot"
+export KAS_COMMAND ?= KAS_CONTAINER_IMAGE=${KAS_CONTAINER_IMAGE} ${MAKEFILE_DIR}kas-container shell --update -c "bitbake core-image-minimal --runonly=populate_osselot"
 
 test-lts: test-kirkstone test-dunfell
 test-current: test-lts test-nanbield
