@@ -59,6 +59,8 @@ Available configuration options are as follows.
 
 ### Global configuration
 
+Global configuration is done in your `local.conf` file or a distro configuration file.
+
 | Variable | Description | Default value |
 |---|---|---|
 | `OSSELOT_HASH_ALGORITHM` | The hash algorithm used when determining equivalence between source code and curation data | `"md5"` |
@@ -67,16 +69,19 @@ Available configuration options are as follows.
 | `OSSELOT_SRCREV` | The revision of the curation data to use (default: latest) | `"${AUTOREV}"` |
 | `OSSELOT_PV` | The package version of the curation data | `"1.0+git${SRCPV}"` |
 | `OSSELOT_IGNORE_LICENSES` | Ignore packages with the listed licenses (whitespace separated) | `"CLOSED"` |
-| `OSSELOT_IGNORE_SOURCE_GLOBS` | Globally ignore source code files in `S` which paths match these globs (whitespace seperated) | `".pc/**/* patches/series .git/**/*"` |
+| `OSSELOT_IGNORE_SOURCE_GLOBS` | Globally ignore source code files in `S` which paths match these globs (whitespace separated) | `".pc/**/* patches/series .git/**/*"` |
 
 ### Per-recipe configuration
+
+Per-recipe configuration is done in either the original `*.bb` recipe file or by appending to an existing (upstream) recipe using `*.bbapped`.
 
 | Variable | Description | Default value |
 |---|---|---|
 | `OSSELOT_NAME` | The name of this package within the Osselot database | `"${BPN}"` |
 | `OSSELOT_VERSION` | The version of this package within the Osselot database | `"${PV}"` |
-| `OSSELOT_IGNORE` | Set to `"1"` to ignore this recipe | `"0"`
-| `OSSELOT_IGNORE_SOURCE_GLOBS` | Within this recipe, ignore source code files in `S` where the paths match these globs (whitespace seperated) | `".pc/**/* patches/series .git/**/*"` |
+| `OSSELOT_IGNORE` | Set to `"1"` to ignore this recipe | `"0"` |
+| `OSSELOT_IGNORE_SOURCE_GLOBS` | Within this recipe, ignore source code files in `S` where the paths match these globs (whitespace separated) | `".pc/**/* patches/series .git/**/*"` |
+| `OSSELOT_HASH_EQUIVALENCE` | Set source code hash equivalence of one or more hashes. Equal hashes are colon separated, statements are whitespace separated, e.g. `"aaaa:bbbb:cccc dddd:ffff"` | `""` |
 
 ## Using meta-osselot
 ### General recommendations
@@ -92,6 +97,45 @@ There might be false negatives when matching packages against the Osselot data f
 For example, within the openembedded-core recipe [expat](https://layers.openembedded.org/layerindex/recipe/575/) the name of the package is "expat" and the version is "2.5.0". In Osselot however, the same package is named "libexpat" and the version is "R_2_5_0".
 
 In these cases `OSSELOT_NAME` and/or `OSSELOT_VERSION` need to be overwritten, either within the recipe itself for your own custom layers, or in a matching `.bbappend` file if the mismatch occurs within an upstream layer. In the latter case, please open an issue in this projects issue tracker, or contribute a patch to add the `.bbappend` file for the appropriate layer within the bbappend folder of this repository, so that we can fix this for everyone.
+
+### Ignoring openembedded packages
+
+By default, meta-osselot will already exclude packages where one the following is true:
+
+1. The package name contains a non-target suffix, i.e. it will not end up in the target product (see [`SPECIAL_PKGSUFFIX`](https://docs.yoctoproject.org/singleindex.html#term-SPECIAL_PKGSUFFIX))
+2. The package does not have any source code ([`S`](https://docs.yoctoproject.org/singleindex.html#term-S) folder not existent)
+3. The recipe [`LICENSE`](https://docs.yoctoproject.org/singleindex.html#term-LICENSE) is set to `"CLOSED"` (see `OSSELOT_IGNORE_LICENSES` variable)
+4. The recipe has `OSSELOT_IGNORE` set to `"1"` (see preconfigured bbappends within meta-osselot)
+
+You may globally append to the `OSSELOT_IGNORE_LICENSES` variable, if you want to exclude recipe with based on other licenses (e.g. your custom defined company license)
+
+Also, you may set `OSSELOT_IGNORE = "1"` within any recipe `*.bb` or `*.bbappend` file, if you wish to ignore this package.
+
+### Ignoring source files
+
+> [!CAUTION]
+> Always be cautious when ignoring source file globs on a global level, you might end up ignoring valid cases!
+
+There are valid use-cases for ignoring source files from a license compliance perspective.
+
+For example, when you are confident that there files do not end up in the final product. Adding these files to the ignore list will help reduce the diff between version mismatches.
+
+Another valid reason are release tarballs. Openembedded recipes sometimes use software release tarballs (e.g. GitHub releases) rather than the corresponding git source code (which is used during curation in Osselot). These release tarballs might contain additional files (e.g. pre-generated configure files) that are not relevant from a license compliance perspective.
+
+Append to the `OSSELOT_IGNORE_SOURCE_GLOBS` variable if you want to ignore a file (or [glob](https://en.wikipedia.org/wiki/Glob_(programming))), e.g.: `OSSELOT_IGNORE_SOURCE_GLOBS += "tests/**/*"`.
+
+### Defining source code file hash equivalence
+
+There might be cases of source code differences between two versions of the same file, e.g. when applying patches via bitbake recipes. In most of these cases, there are no license compliance relevant changes done to these files. In these cases you can use `OSSELOT_HASH_EQUIVALENCE` variable to define equivalences between two or more hashes, e.g.:
+
+```
+# first hash equivalence statement
+OSSELOT_HASH_EQUIVALENCE += "bcb82bc370eb937e3b310e98d20aa906:d6b29fc355b6ab0f9f4bb9d4e03e9304:cb31a703b96c1ab2f80d164e9676fe7d"
+# second hash equivalence statement
+OSSELOT_HASH_EQUIVALENCE += "d3b07384d113edec49eaa6238ad5ff00:c157a79031e1c40f85931829bc5fc552"
+```
+
+If an openembedded package source code checksum mismatches the corresponding SPDX checksum entry, meta-osselot will evaluate all available hash equivalence statements. If both the source code checksum as well as the SPDX checksum are available within the same hash equivalence statement, the file will be marked accordingly in the output.
 
 ### Working with meta-osselot output
 

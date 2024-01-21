@@ -22,6 +22,7 @@ OSSELOT_SPDX_CHECKSUMS_DIR = "${WORKDIR}/osselot-checksums/spdx"
 OSSELOT_WORKDIR = "${WORKDIR}/osselot"
 OSSELOT_PACKAGE_META_FILE = "${OSSELOT_WORKDIR}/${PN}-${PV}-meta.json"
 OSSELOT_PACKAGE_JSON = "${OSSELOT_DATA_WORKDIR}/packages.json"
+OSSELOT_HASH_EQUIVALENCE = ""
 
 python do_osselot_populate_workdir() {
     import os
@@ -189,6 +190,7 @@ python do_osselot_compare_checksums() {
     osselot_hash_algorithm = d.getVar("OSSELOT_HASH_ALGORITHM")
     osselot_ignore_source_globs = d.getVar("OSSELOT_IGNORE_SOURCE_GLOBS").split() or []
     osselot_package_meta_file = d.getVar("OSSELOT_PACKAGE_META_FILE")
+    osselot_hash_equivalence = [ { hash for hash in hashequivalance.split(":") } for hashequivalance in d.getVar("OSSELOT_HASH_EQUIVALENCE").split() or [] ]
 
     meta = read_json(osselot_package_meta_file)
 
@@ -207,6 +209,7 @@ python do_osselot_compare_checksums() {
     meta["spdx_checksum_data_missing"] = []
     meta["spdx_checksum_data_mismatch"] = []
     meta["ignored_files"] = []
+    meta["spdx_checksum_equivalence_data_match"] = []
     meta["spdx_checksum_data_match"] = []
     for s_checksum_file in s_checksum_files:
         bb.debug(2, f"Processing checksum file {s_checksum_file}")
@@ -234,7 +237,18 @@ python do_osselot_compare_checksums() {
             spdx_checksum = f.readline() 
         if s_checksum != spdx_checksum:
             bb.debug(2, f"Checksum mismatch: {source_file}")
-            meta["spdx_checksum_data_mismatch"].append(source_file)
+            bb.debug(2, "Evaluating hash equivalence statements")
+            found_equal_hash = False
+            for equal_hashes in osselot_hash_equivalence:
+                if s_checksum in equal_hashes and spdx_checksum in equal_hashes:
+                    bb.debug(2, f"Found hash equivalence for source code checksum {s_checksum} and spdx checksum {spdx_checksum}")
+                    found_equal_hash = True
+                    meta["spdx_checksum_equivalence_data_match"].append(source_file)
+                    break
+
+            if not found_equal_hash:
+                bb.debug(2, "No matching hash equivalance statement found")
+                meta["spdx_checksum_data_mismatch"].append(source_file)
         else:
             bb.debug(2, f"Checksum match: {source_file}")
             meta["spdx_checksum_data_match"].append(source_file)
