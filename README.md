@@ -29,7 +29,7 @@ Meta-osselot integrates directly in the bitbake build process. It will identify 
 
 The results of this comparison, together with other meta-information as well as the available Osselot curation data, will be then provided as build artefacts.
 
-## Adding the meta-osselot layer(s) to your build
+## Adding the meta-osselot layer to your build
 
 Run `bitbake-layers add-layer meta-osselot` to add the core layer to your build.
 
@@ -45,7 +45,7 @@ repos:
 
 ## Enabling and configuring Osselot integration
 
-To enable the Osselot integration, simply add `INHERIT += "osselot"` to your `local.conf` file.
+To enable the Osselot integration, simply add `INHERIT += "osselot"` to your `local.conf` file. Now osselot tasks will automatically run for every package or image you build. 
 
 Alternatively, if you are only interested in the osselot output and not in building packages add `--runonly=populate_osselot` to your bitbake command, e.g:
 
@@ -87,6 +87,13 @@ Per-recipe configuration is done in either the original `*.bb` recipe file or by
 ### General recommendations
 
 We recommend overwriting `OSSELOT_SRC_URI` with your own fork of the `package-analysis` repository, as this allows you to push and re-use your own curated data. However, remember to keep your fork up-to-date with upstream repository for the latest curation data.
+
+When adding curation data to the git repository, be aware that following assumptions are made by meta-osselot, otherwise your curation data will **not** be identified:
+
+1. Available packages are subdirectories within the `analysed-packages` directory (depth is irrelevant). The package name equals the directory name.
+2. Available packages have one or more versions available as direct subdirectory within the package directory.
+3. These version directories start with the prefix "version-". The package version equals anything after this prefix.
+4. The version directory contains at least one valid SPDX file in JSON format.
 
 We also recommend to [upstream your curation data to the Osselot project](https://wiki.osselot.org/index.php/Main_Page#Contributing_to_the_OSSelot_project) for an additional layer of quality control, and for the open-source spirit of improving the Osselot database by making your curation data available to others.
 
