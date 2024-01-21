@@ -70,6 +70,7 @@ Global configuration is done in your `local.conf` file or a distro configuration
 | `OSSELOT_PV` | The package version of the curation data | `"1.0+git${SRCPV}"` |
 | `OSSELOT_IGNORE_LICENSES` | Ignore packages with the listed licenses (whitespace separated) | `"CLOSED"` |
 | `OSSELOT_IGNORE_SOURCE_GLOBS` | Globally ignore source code files in `S` which paths match these globs (whitespace separated) | `".pc/**/* patches/series .git/**/*"` |
+| `OSSELOT_IGNORE_PACKAGE_SUFFIXES` | Ignore packages ending with one of the specified suffixes (whitespace separated) | `"${SPECIAL_PKGSUFFIX}"` |
 
 ### Per-recipe configuration
 
@@ -109,7 +110,7 @@ In these cases `OSSELOT_NAME` and/or `OSSELOT_VERSION` need to be overwritten, e
 
 By default, meta-osselot will already exclude packages where one the following is true:
 
-1. The package name contains a non-target suffix, i.e. it will not end up in the target product (see [`SPECIAL_PKGSUFFIX`](https://docs.yoctoproject.org/singleindex.html#term-SPECIAL_PKGSUFFIX))
+1. The package name contains a non-target suffix, i.e. it will not end up in the target product (see [`SPECIAL_PKGSUFFIX`](https://docs.yoctoproject.org/singleindex.html#term-SPECIAL_PKGSUFFIX) which is the default value for `OSSELOT_IGNORE_PACKAGE_SUFFIXES`)
 2. The package does not have any source code ([`S`](https://docs.yoctoproject.org/singleindex.html#term-S) folder not existent)
 3. The recipe [`LICENSE`](https://docs.yoctoproject.org/singleindex.html#term-LICENSE) is set to `"CLOSED"` (see `OSSELOT_IGNORE_LICENSES` variable)
 4. The recipe has `OSSELOT_IGNORE` set to `"1"` (see preconfigured bbappends within meta-osselot)

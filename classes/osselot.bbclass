@@ -14,6 +14,7 @@ OSSELOT_SRCREV ?= "${AUTOREV}"
 OSSELOT_PV ?= "1.0+git${SRCPV}"
 OSSELOT_IGNORE ?= "0"
 OSSELOT_IGNORE_LICENSES = "CLOSED"
+OSSELOT_IGNORE_PACKAGE_SUFFIXES ?= "${SPECIAL_PKGSUFFIX}"
 OSSELOT_IGNORE_SOURCE_GLOBS = ".pc/**/* patches/series .git/**/*"
 OSSELOT_DATA_WORKDIR = "${TMPDIR}/osselot-data"
 OSSELOT_DATA_S_DIR = "${OSSELOT_DATA_WORKDIR}/git"
@@ -190,7 +191,7 @@ python do_osselot_compare_checksums() {
     osselot_hash_algorithm = d.getVar("OSSELOT_HASH_ALGORITHM")
     osselot_ignore_source_globs = d.getVar("OSSELOT_IGNORE_SOURCE_GLOBS").split() or []
     osselot_package_meta_file = d.getVar("OSSELOT_PACKAGE_META_FILE")
-    osselot_hash_equivalence = [ { hash for hash in hashequivalance.split(":") } for hashequivalance in d.getVar("OSSELOT_HASH_EQUIVALENCE").split() or [] ]
+    osselot_hash_equivalence = [ { hash for hash in hashequivalance.split(":") or {} } for hashequivalance in d.getVar("OSSELOT_HASH_EQUIVALENCE").split() or [] ]
 
     meta = read_json(osselot_package_meta_file)
 
@@ -312,12 +313,13 @@ def osselot_ignore_package(d):
     s = d.getVar("S")
     osselot_ignore = d.getVar("OSSELOT_IGNORE")
     osselot_ignore_licenses = d.getVar("OSSELOT_IGNORE_LICENSES")
+    osselot_ignore_package_suffixes = d.getVar("OSSELOT_IGNORE_PACKAGE_SUFFIXES").split() or []
     p_license = d.getVar("LICENSE")
 
-    # ignore non-target packages
-    for suffix in d.getVar("SPECIAL_PKGSUFFIX").split():
-        if suffix in pn.removeprefix(bpn):
-            return True, f"{pn} contained non-target suffix: {suffix}"
+    # ignore packages with ignored suffixes
+    for ignored_suffix in osselot_ignore_package_suffixes:
+        if pn.endswith(ignored_suffix):
+            return True, f"{pn} contained ignored package suffix: {ignored_suffix}"
 
     # ignore packages without source files ("S" folder missing)
     if not os.path.isdir(s):
