@@ -154,9 +154,3 @@ The file at `${OSSELOT_DEPLOY_DIR}/${PN}/${PN}-${PV}-meta.json` contains relevan
 ##  Contributing
 
 Please submit any patches against the meta-osselot layer via a GitHub Pull Request.
-
-## Known Limitations
-
-1. Some openembedded recipes use release tarballs (e.g. GitHub releases), which occasionally mismatches the source code from the git repository. Together with the Osselot project, we are [working on finding a solution to this](https://github.com/Open-Source-Compliance/package-analysis/issues/67).
-2. meta-osselot currently only works with single-project recipes.
-3. We are currently considering options for better reuse support for openembedded-specific clearance data , e.g. that cannot be pinned to a point-release due to AUTOINC recipes, applied patches, or meta-layer in-tree source-code.
