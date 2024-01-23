@@ -113,6 +113,7 @@ python do_osselot_create_s_checksums() {
     import hashlib
     import os
 
+    workdir = d.getVar("WORKDIR")
     s = d.getVar("S")
     pn = d.getVar("PN")
     pv = d.getVar("PV")
@@ -124,13 +125,26 @@ python do_osselot_create_s_checksums() {
         bb.debug(2, f"Ignoring {pn}: {reason}")
         return
 
-    for item in scantree(s):
-        if item.is_file(follow_symlinks=False):
-            bb.debug(2, f"Creating {osselot_hash_algorithm} checksum for file {item.path}")
-            with open(item.path, "rb") as fb:
-                digest = hashlib.file_digest(fb, osselot_hash_algorithm).hexdigest()
-                hash_file_path = os.path.join(osselot_s_checksums_dir, f"{os.path.relpath(item.path, s)}.{osselot_hash_algorithm}")
-                write_checksum_file(hash_file_path, digest)
+    # Only consider top-level files as source code, if S == WORKDIR.
+    # This is the case for recipes that only add files from the layer repo.
+    if s == workdir:
+        items = [
+            item
+            for item in os.scandir(s)
+            if item.is_file(follow_symlinks=False)
+        ]
+    else:
+        items = [
+            item
+            for item in scantree(s)
+            if item.is_file(follow_symlinks=False)
+        ]
+    for item in items:
+        bb.debug(2, f"Creating {osselot_hash_algorithm} checksum for file {item.path}")
+        with open(item.path, "rb") as fb:
+            digest = hashlib.file_digest(fb, osselot_hash_algorithm).hexdigest()
+            hash_file_path = os.path.join(osselot_s_checksums_dir, f"{os.path.relpath(item.path, s)}.{osselot_hash_algorithm}")
+            write_checksum_file(hash_file_path, digest)
 }
 do_osselot_create_s_checksums[cleandirs] = "${OSSELOT_S_CHECKSUMS_DIR}"
 
