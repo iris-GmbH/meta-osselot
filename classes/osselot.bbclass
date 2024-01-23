@@ -19,7 +19,9 @@ OSSELOT_IGNORE_SOURCE_GLOBS = ".pc/**/* patches/series .git/**/*"
 OSSELOT_DATA_WORKDIR = "${TMPDIR}/osselot-data"
 OSSELOT_DATA_S_DIR = "${OSSELOT_DATA_WORKDIR}/git"
 OSSELOT_S_CHECKSUMS_DIR = "${WORKDIR}/osselot-checksums/s"
+OSSELOT_S_CHECKSUMS_FILE = "${OSSELOT_S_CHECKSUMS_DIR}/s_checksums.json"
 OSSELOT_SPDX_CHECKSUMS_DIR = "${WORKDIR}/osselot-checksums/spdx"
+OSSELOT_SPDX_CHECKSUMS_FILE = "${OSSELOT_SPDX_CHECKSUMS_DIR}/spdx_checksums.json"
 OSSELOT_WORKDIR = "${WORKDIR}/osselot"
 OSSELOT_PACKAGE_META_FILE = "${OSSELOT_WORKDIR}/${PN}-${PV}-meta.json"
 OSSELOT_PACKAGE_JSON = "${OSSELOT_DATA_WORKDIR}/packages.json"
@@ -116,9 +118,8 @@ python do_osselot_create_s_checksums() {
     workdir = d.getVar("WORKDIR")
     s = d.getVar("S")
     pn = d.getVar("PN")
-    pv = d.getVar("PV")
-    osselot_s_checksums_dir = d.getVar("OSSELOT_S_CHECKSUMS_DIR")
     osselot_hash_algorithm = d.getVar("OSSELOT_HASH_ALGORITHM")
+    osselot_s_checksums_file = d.getVar("OSSELOT_S_CHECKSUMS_FILE")
 
     ignored, reason = osselot_ignore_package(d)
     if ignored is True:
@@ -139,12 +140,14 @@ python do_osselot_create_s_checksums() {
             for item in scantree(s)
             if item.is_file(follow_symlinks=False)
         ]
+    checksums = {}
     for item in items:
         bb.debug(2, f"Creating {osselot_hash_algorithm} checksum for file {item.path}")
         with open(item.path, "rb") as fb:
             digest = hashlib.file_digest(fb, osselot_hash_algorithm).hexdigest()
-            hash_file_path = os.path.join(osselot_s_checksums_dir, f"{os.path.relpath(item.path, s)}.{osselot_hash_algorithm}")
-            write_checksum_file(hash_file_path, digest)
+            checksums[os.path.relpath(item.path, s)] = {}
+            checksums[os.path.relpath(item.path, s)][osselot_hash_algorithm] = digest
+    write_json(osselot_s_checksums_file, checksums)
 }
 do_osselot_create_s_checksums[cleandirs] = "${OSSELOT_S_CHECKSUMS_DIR}"
 
@@ -154,14 +157,11 @@ python do_osselot_create_spdx_checksums() {
     import os
     from pathlib import Path, PurePath
 
-    s = d.getVar("S")
     pn = d.getVar("PN")
-    bpn = d.getVar("BPN")
-    pv = d.getVar("PV")
     osselot_name = d.getVar("OSSELOT_NAME")
     osselot_workdir = d.getVar("OSSELOT_WORKDIR")
-    osselot_spdx_checksums_dir = d.getVar("OSSELOT_SPDX_CHECKSUMS_DIR")
     osselot_hash_algorithm = d.getVar("OSSELOT_HASH_ALGORITHM")
+    osselot_spdx_checksums_file = d.getVar("OSSELOT_SPDX_CHECKSUMS_FILE")
 
     ignored, reason = osselot_ignore_package(d)
     if ignored is True:
@@ -170,24 +170,19 @@ python do_osselot_create_spdx_checksums() {
 
     bb.debug(2, f"Looking for SPDX JSON files in {osselot_workdir}")
     spdx_files = Path(osselot_workdir).glob(f"*/*.json")
+    checksums = {}
     for spdx_file in spdx_files:
         bb.debug(2, f"Processing SPDX JSON file found at {spdx_file}") 
         # TODO: Take multiple SPDX standards into account
         files = read_json(spdx_file)["files"]
-        # sort files based on path length (long > short), eliminate edge cases where false mismatches could occur
-        files.sort(key=lambda s: len(s["fileName"]), reverse=True)
         for file in files:
-            filename = match_spdx_file_to_source_file(file["fileName"], s)
-            if not filename:
-                continue
-            # extract correct checksum
             checksum = next((c["checksumValue"] for c in file["checksums"] if c["algorithm"].lower() == osselot_hash_algorithm.lower()), None)
-
             if not checksum:
                 bb.fatal(f"Could not find {osselot_hash_algorithm} checksum data for {file}")
 
-            checksum_file = os.path.join(osselot_spdx_checksums_dir, f"{filename}.{osselot_hash_algorithm}")
-            write_checksum_file(checksum_file, checksum)
+            checksums[file["fileName"]] = {}
+            checksums[file["fileName"]][osselot_hash_algorithm] = checksum
+    write_json(osselot_spdx_checksums_file, checksums)
 }
 do_osselot_create_spdx_checksums[cleandirs] = "${OSSELOT_SPDX_CHECKSUMS_DIR}"
 
@@ -197,22 +192,35 @@ python do_osselot_compare_checksums() {
     from pathlib import Path, PurePath
 
     s = d.getVar("S")
-    pn = d.getVar("PN")
-    osselot_name = d.getVar("OSSELOT_NAME")
-    osselot_workdir = d.getVar("OSSELOT_WORKDIR")
-    osselot_s_checksums_dir = d.getVar("OSSELOT_S_CHECKSUMS_DIR")
-    osselot_spdx_checksums_dir = d.getVar("OSSELOT_SPDX_CHECKSUMS_DIR")
+    osselot_s_checksums_file = d.getVar("OSSELOT_S_CHECKSUMS_FILE")
+    osselot_spdx_checksums_file = d.getVar("OSSELOT_SPDX_CHECKSUMS_FILE")
     osselot_hash_algorithm = d.getVar("OSSELOT_HASH_ALGORITHM")
     osselot_ignore_source_globs = d.getVar("OSSELOT_IGNORE_SOURCE_GLOBS").split() or []
     osselot_package_meta_file = d.getVar("OSSELOT_PACKAGE_META_FILE")
     osselot_hash_equivalence = [ { hash for hash in hashequivalance.split(":") or {} } for hashequivalance in d.getVar("OSSELOT_HASH_EQUIVALENCE").split() or [] ]
 
     meta = read_json(osselot_package_meta_file)
-
     package_status = meta["package_status"]
     if package_status in ["ignored", "not_found"]:
         bb.debug(2, f"Package status is {package_status}. Skipping...")
         return
+
+    s_checksums = read_json(osselot_s_checksums_file)
+    spdx_checksums = read_json(osselot_spdx_checksums_file)
+    # sort files based on path length (long > short), eliminate edge cases where false mismatches could occur
+    spdx_file_paths = list(spdx_checksums)
+    spdx_file_paths.sort(key=len, reverse=True)
+
+    # we check for matching source code files, stripping path prefixes from spdx file paths in the process.
+    spdx_checksums_stripped = {}
+    for file_path in spdx_file_paths:
+        stripped_file_path = match_spdx_file_to_source_file(file_path, s)
+        if stripped_file_path:
+            bb.debug(2, f"Found matching source file path {stripped_file_path} for SPDX file path {file_path}")
+            spdx_checksums_stripped[stripped_file_path] = {}
+            spdx_checksums_stripped[stripped_file_path][osselot_hash_algorithm] = spdx_checksums[file_path][osselot_hash_algorithm]
+        else:
+            bb.debug(2, f"No matching source file found for SPDX file path {file_path}")
 
     osselot_file_ignore_list = [ 
         os.path.relpath(file, s)
@@ -220,38 +228,29 @@ python do_osselot_compare_checksums() {
         for file in Path(s).glob(source_glob) 
     ]
 
-    s_checksum_files = Path(osselot_s_checksums_dir).rglob(f"*.{osselot_hash_algorithm}")
     meta["spdx_checksum_data_missing"] = []
     meta["spdx_checksum_data_mismatch"] = []
     meta["ignored_files"] = []
     meta["spdx_checksum_equivalence_data_match"] = []
     meta["spdx_checksum_data_match"] = []
-    for s_checksum_file in s_checksum_files:
-        bb.debug(2, f"Processing checksum file {s_checksum_file}")
-
-        source_file = os.path.relpath(s_checksum_file, osselot_s_checksums_dir).removesuffix(f".{osselot_hash_algorithm}")
-        bb.debug(2, f"Source file is {source_file}")
-
-        spdx_checksum_file = os.path.join(osselot_spdx_checksums_dir, os.path.relpath(s_checksum_file, osselot_s_checksums_dir))
-        bb.debug(2, f"SPDX checksum file is {spdx_checksum_file}")
+    for source_file in s_checksums:
+        s_checksum = s_checksums[source_file][osselot_hash_algorithm]
+        bb.debug(2, f"Processing checksum for source file {source_file} with checksum {s_checksum}")
 
         if source_file in osselot_file_ignore_list:
             bb.debug(2, f"Excluding ignored file {source_file}")
             meta["ignored_files"].append(source_file)
             continue
 
-        if not os.path.isfile(spdx_checksum_file):
+        if not source_file in spdx_checksums_stripped:
             bb.debug(2, f"Missing SPDX checksum data for file {source_file}")
             meta["spdx_checksum_data_missing"].append(source_file)
             continue
 
-        bb.debug(2, "Comparing {s_checksum_file} against {spdx_checksum_file}")
-        with open (s_checksum_file, "r") as f:
-            s_checksum = f.readline() 
-        with open (spdx_checksum_file, "r") as f:
-            spdx_checksum = f.readline() 
+        bb.debug(2, f"Comparing checksum of source file {source_file} against SPDX checksum")
+        spdx_checksum = spdx_checksums_stripped[source_file][osselot_hash_algorithm]
         if s_checksum != spdx_checksum:
-            bb.debug(2, f"Checksum mismatch: {source_file}")
+            bb.debug(2, f"Checksum mismatch for source file {source_file} (S: {s_checksum}, SPDX: {spdx_checksum}")
             bb.debug(2, "Evaluating hash equivalence statements")
             found_equal_hash = False
             for equal_hashes in osselot_hash_equivalence:
@@ -404,4 +403,4 @@ def match_spdx_file_to_source_file(spdx_checksum_file_path, s):
             return None
 
     bb.debug(2, f"Found valid SPDX checksum path {spdx_checksum_file_path}")
-    return spdx_checksum_file_path
+    return spdx_checksum_file_path.as_posix()
