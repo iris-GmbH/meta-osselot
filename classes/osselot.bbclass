@@ -346,6 +346,10 @@ def osselot_ignore_package(d):
     if p_license in osselot_ignore_licenses:
         return True, f'{pn} license "{p_license}" is set to ignore'
 
+    # We just archive gcc-source for all the gcc related recipes
+    if bpn in ['gcc', 'libgcc'] and not pn.startswith('gcc-source'):
+        return True, f"{pn} is excluded, covered by gcc-source"
+
     return False, None
 
 
