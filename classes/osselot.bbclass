@@ -143,10 +143,15 @@ python do_osselot_create_s_checksums() {
     checksums = {}
     for item in items:
         bb.debug(2, f"Creating {osselot_hash_algorithm} checksum for file {item.path}")
-        with open(item.path, "rb") as fb:
-            digest = hashlib.file_digest(fb, osselot_hash_algorithm).hexdigest()
-            checksums[os.path.relpath(item.path, s)] = {}
-            checksums[os.path.relpath(item.path, s)][osselot_hash_algorithm] = digest
+        try:
+            fb = open(item.path, "rb")
+        except:
+            bb.warn(f"Could not open file {item.path}")
+        else:
+            with fb:
+                digest = hashlib.file_digest(fb, osselot_hash_algorithm).hexdigest()
+                checksums[os.path.relpath(item.path, s)] = {}
+                checksums[os.path.relpath(item.path, s)][osselot_hash_algorithm] = digest
     write_json(osselot_s_checksums_file, checksums)
 }
 do_osselot_create_s_checksums[cleandirs] = "${OSSELOT_S_CHECKSUMS_DIR}"
@@ -282,8 +287,8 @@ do_osselot_populate_workdir[depends] = " \
     osselot-package-analysis-native:do_osselot_collect_packages \
 "
 addtask osselot_create_spdx_checksums after do_osselot_populate_workdir
-addtask osselot_create_s_checksums after do_patch
-addtask osselot_compare_checksums after do_patch
+addtask osselot_create_s_checksums after do_unpack do_patch do_preconfigure before do_configure do_kernel_configme
+addtask osselot_compare_checksums after do_unpack do_patch
 do_osselot_compare_checksums[depends] += " \
     ${PN}:do_osselot_create_s_checksums \
     ${PN}:do_osselot_create_spdx_checksums \
