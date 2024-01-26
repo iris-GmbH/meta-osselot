@@ -12,7 +12,7 @@ OSSELOT_SRC_URI ?= "git://github.com/Open-Source-Compliance/package-analysis.git
 # The source revision to use from the osselot data repository (defaults to latest)
 OSSELOT_SRCREV ?= "${AUTOREV}"
 OSSELOT_PV ?= "1.0+git${SRCPV}"
-OSSELOT_IGNORE ?= "0"
+OSSELOT_IGNORE ??= "0"
 OSSELOT_IGNORE_LICENSES = "CLOSED"
 OSSELOT_IGNORE_PACKAGE_SUFFIXES ?= "${SPECIAL_PKGSUFFIX}"
 OSSELOT_IGNORE_SOURCE_GLOBS = ".pc/**/* patches/series .git/**/*"
