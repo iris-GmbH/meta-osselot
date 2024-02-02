@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright 2023 iris-GmbH infrared & intelligent sensors
 
+inherit create-spdx-2.2
+
+SPDX_INCLUDE_SOURCE = "1"
+
 OSSELOT_NAME ??= "${BPN}"
 OSSELOT_VERSION ??= "${PV}"
 # The hash algorithm used to verify file equality between source code and curated data
@@ -273,6 +277,56 @@ python do_osselot_compare_checksums() {
             meta["spdx_checksum_data_match"].append(source_file)
     write_json(osselot_package_meta_file, meta)
 }
+
+
+#ROOTFS_POSTUNINSTALL_COMMAND += "osselot_collect_oe_spdx"
+#
+#python osselot_collect_oe_spdx() {
+#    import json
+#    import oe.sbom
+#    from pathlib import Path
+#    from oe.rootfs import image_list_installed_packages
+#
+#    providers = collect_package_providers(d)
+#    deploy_dir_spdx = Path(d.getVar("DEPLOY_DIR_SPDX"))
+#    image_installed_packages = image_list_installed_packages(d)
+#    package_archs = d.getVar("SSTATE_ARCHS").split()
+#    package_archs.reverse()
+#
+#    is_native = bb.data.inherits_class("native", d) or bb.data.inherits_class("cross", d)
+#    if is_native:
+#        return
+#
+#    for package in image_installed_packages:
+#        pkg_name, pkg_hashfn = providers[package]
+#
+#        # get runtime package spdx paths
+#        runtime_package_spdx_path = oe.sbom.doc_find_by_hashfn(deploy_dir_spdx, package_archs, f"runtime-{pkg_name}", pkg_hashfn)
+#        if not runtime_package_spdx_path:
+#            bb.debug(2, f"No runtime SPDX for package {pkg_name} found")
+#            continue
+#        bb.debug(2, f"Found runtime SPDX for package {pkg_name} at {runtime_package_spdx_path}") 
+#
+#        with open(runtime_package_spdx_path, "rb") as f:
+#            doc, sha1 = oe.sbom.read_doc(f)
+#
+#        # get package spdx path
+#        package_ref_path = None
+#        for ref in doc.externalDocumentRefs:
+#            if ref["externalDocumentId"] != f"DocumentRef-package-{pkg_name}":
+#                continue
+#            package_ref_path = oe.sbom.doc_find_by_namespace(deploy_dir_spdx, package_archs, ref.spdxDocument)
+#        if not package_ref_path:
+#            bb.fatal(f"Cannot find required package SPDX file for package {pkg_name} at {package_ref_path}")
+#        bb.debug(2, f"Found package SBOM reference to {package_ref_path}")
+#        with open(package_ref_path, "rb") as f:
+#            doc, sha1 = oe.sbom.read_doc(f)
+#
+#        # get file list from package spdx
+#        files = { relationship["comment"] for relationship in doc.SPDXRelationship if relationship["relationshipType"] == "GENERATED_FROM" }
+#}
+
+
 
 SSTATETASKS += "do_populate_osselot"
 do_populate_osselot() {
