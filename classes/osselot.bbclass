@@ -115,6 +115,23 @@ python do_osselot_create_s_checksums() {
     import hashlib
     import os
 
+    # backport hashlib.file_digest (needs Python 3.11) to Python 3.8
+    # Function is:
+    # Copyright (C) 2005-2010   Gregory P. Smith (greg@krypto.org)
+    # Licensed to PSF under a Contributor Agreement
+    # SPDX-License-Identifier: 0BSD | PSF-2.0
+    def py38_file_digest(fileobj, digest):
+        digestobj = hashlib.new(digest)
+        # assume all fileobj are opened in binary mode!
+        buf = bytearray(2**18)
+        view = memoryview(buf)
+        while True:
+            size = fileobj.readinto(buf)
+            if size == 0:
+                break
+            digestobj.update(view[:size])
+        return digestobj
+
     workdir = d.getVar("WORKDIR")
     s = d.getVar("S")
     pn = d.getVar("PN")
@@ -149,7 +166,7 @@ python do_osselot_create_s_checksums() {
             bb.warn(f"Could not open file {item.path}")
         else:
             with fb:
-                digest = hashlib.file_digest(fb, osselot_hash_algorithm).hexdigest()
+                digest = py38_file_digest(fb, osselot_hash_algorithm).hexdigest()
                 checksums[os.path.relpath(item.path, s)] = {}
                 checksums[os.path.relpath(item.path, s)][osselot_hash_algorithm] = digest
     write_json(osselot_s_checksums_file, checksums)
