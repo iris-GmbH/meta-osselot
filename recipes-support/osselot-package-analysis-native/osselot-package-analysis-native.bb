@@ -32,6 +32,16 @@ python () {
 }
 
 python do_osselot_collect_packages () {
+    # backport str.removeprefix (needs Python 3.9) to Python 3.8
+    # this function is licensed under:
+    # SPDX-License-Identifier: CC0-1.0
+    # see: https://peps.python.org/pep-0616/#copyright
+    def py38_remove_prefix(fullstring, prefix):
+        if fullstring.startswith(prefix):
+            return fullstring[len(prefix):]
+        else:
+            return fullstring[:]
+
     from pathlib import Path
 
     osselot_data_topdir = d.getVar("OSSELOT_DATA_TOPDIR")
@@ -41,7 +51,7 @@ python do_osselot_collect_packages () {
     osselot_packages = {
         version_dir.parent.name: {
             "package_path": version_dir.parent.as_posix(), "versions": {
-                package_version_dir.name.removeprefix(osselot_data_version_prefix): package_version_dir.as_posix()
+                py38_remove_prefix(package_version_dir.name, osselot_data_version_prefix): package_version_dir.as_posix()
                 for package_version_dir in Path(version_dir.parent).glob(f"{osselot_data_version_prefix}*")
                 if package_version_dir.is_dir()
             }
