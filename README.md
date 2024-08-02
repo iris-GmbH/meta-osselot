@@ -64,7 +64,7 @@ Global configuration is done in your `local.conf` file or a distro configuration
 | Variable | Description | Default value |
 |---|---|---|
 | `OSSELOT_HASH_ALGORITHM` | The hash algorithm used when determining equivalence between source code and curation data | `"md5"` |
-| `OSSELOT_DEPLOY_DIR` | The folder in which Osselot artifact data will be deployed | `"${DEPLOY_DIR}/osselot"` |
+| `OSSELOT_DEPLOYDIR` | The folder in which Osselot artifact data will be deployed | `"${DEPLOY_DIR}/osselot"` |
 | `OSSELOT_SRC_URI` | The bitbake `SRC_URI` configuration for fetching curation data | `"git://github.com/Open-Source-Compliance/package-analysis.git;protocol=https;branch=main"` |
 | `OSSELOT_SRCREV` | The revision of the curation data to use (default: latest) | `"${AUTOREV}"` |
 | `OSSELOT_PV` | The package version of the curation data | `"1.0+git${SRCPV}"` |
@@ -147,9 +147,9 @@ If an openembedded package source code checksum mismatches the corresponding SPD
 
 ### Working with meta-osselot output
 
-After a successful build, all files relevant to meta-osselot will be stored in the `${OSSELOT_DEPLOY_DIR}`.
+After a successful build, all files relevant to meta-osselot will be stored in the `${OSSELOT_DEPLOYDIR}`.
 
-The file at `${OSSELOT_DEPLOY_DIR}/${PN}/${PN}-${PV}-meta.json` contains relevant meta- and checksum-information on the package.
+The file at `${OSSELOT_DEPLOYDIR}/${PN}/${PN}-${PV}-meta.json` contains relevant meta- and checksum-information on the package.
 
 ##  Contributing
 
