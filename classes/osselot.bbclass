@@ -399,10 +399,10 @@ def find_best_version_match(osselot_version, available_osselot_versions):
     bb.debug(2, f"Version {osselot_version} not available in osselot database. Finding the next best version match")
     osselot_data_version_strings = list(available_osselot_versions)
     osselot_data_version_strings.append(osselot_version)
-    process = subprocess.Popen("sort -V".split(" "), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE, shell=True)
+    process = subprocess.Popen("sort -V".split(" "), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
     so, se = process.communicate("\n".join(osselot_data_version_strings).encode())
     osselot_data_version_strings_sorted = so.decode().strip("\n").split("\n")
-
+    bb.debug(2, f"Found osselot data versions (sorted): {osselot_data_version_strings_sorted}")
     if len(osselot_data_version_strings_sorted) != len(osselot_data_version_strings):
         bb.fatal(f"Sorted osselot version list content does not match original list")
     
