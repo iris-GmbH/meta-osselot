@@ -191,7 +191,7 @@ python do_osselot_create_spdx_checksums() {
         return
 
     bb.debug(2, f"Looking for SPDX JSON files in {osselot_workdir}")
-    spdx_files = Path(osselot_workdir).glob(f"*/*.json")
+    spdx_files = Path(osselot_workdir).glob(f"*/*.spdx.json")
     checksums = {}
     for spdx_file in spdx_files:
         bb.debug(2, f"Processing SPDX JSON file found at {spdx_file}") 
